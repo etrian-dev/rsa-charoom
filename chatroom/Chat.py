@@ -1,11 +1,16 @@
 from time import time
 
+from . import db
+
 class Chat:
     """Defines a chat between two users.
     """
-    def __init__(self, user: str):
-        self.recipient = user
-        self.creation_tstamp = int(time.time())
+    def __init__(self, user1: str, user2: str):
+        self.chat_id = None
+        self.participant1 = user1
+        self.participant2 = user2
+        self.creation_time = None
+        self.last_activity = None
         self.messages = []
 
     def add_message(data: str, timestamp):
@@ -25,9 +30,35 @@ from flask import (Blueprint, request, render_template)
 
 blueprint = Blueprint('chat', __name__, url_prefix='/chats')
 
-@blueprint.route('/<username>', methods=['GET'])
-def home_user(username=None):
-    return render_template('index.html', username=username)
+@blueprint.route('/<int:user_id>', methods=['GET'])
+def home_user(user_id: int):
+    cur = db.get_db().cursor()
+    user_data = dict()
+    try:
+        # Fetch the username
+        cur.execute('''SELECT username FROM Users WHERE user_id = ?''', (user_id))
+        user_data['username'] = cur.fetchone()
+        # fetch this users's chats
+        # FIXME: maybe use ? IN (participant1, participant2)
+        cur.execute('''
+        SELECT *
+        FROM Chats
+        WHERE participant1 = ? or participant2 = ?''', (user_id, user_id))
+        for row in cur.fetchall():
+            # create a chat object
+            ch = Chat(row['participant1'], row['participant2'])
+            ch.chat_id = row['chat_id']
+            ch.creation_time = row['creation_tm']
+            ch.last_activity = row['last_mod_tm']
+            # insert that into the user_data dict
+            if user_data['chats'] is None:
+                user_data['chats'] = [ch]
+            else:
+                user_data['chats'].append(ch)
+    except DatabaseError:
+        flash('Cannot retrieve user data')
+        return render_template('chats.html')
+    return render_template('chats.html', user_data=user_data)
 
 @blueprint.route('/<creator>/', methods=['GET'])
 # TODO: post

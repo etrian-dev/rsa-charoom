@@ -3,6 +3,7 @@ import os
 from flask import Flask, render_template
 
 from . import (Auth, Chat, Msg)
+from . import db
 
 
 def create_app(testing=None):
@@ -18,6 +19,10 @@ def create_app(testing=None):
     app.register_blueprint(Msg.blueprint)
 
     print(app.url_map)
+    app.config['DATABASE'] = 'chatroom.sqlite'
+    # init the db
+    db.init_app(app)
+
     return app
 
 

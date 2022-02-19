@@ -1,5 +1,5 @@
 from . import User
-
+from . import db
 
 # Create users
 users = dict()
@@ -29,17 +29,25 @@ def login():
         pwd = request.form['pwd']
 
         if (not username) or (not pwd):
-            error = 'Username o password non specificata'
+            error = 'Username or password unspecified'
         else:
-            if username not in user_map.keys():
-                error = 'Utente inesistente'
-            found = False
-            for user in users.keys():
-                if user.username == username and user.check_pwd(pwd):
-                    users[user] = True # set user to logged
-                    return redirect(url_for('chat.home_user', username=username))
-            if not found:
-                error = 'Password errata'
+            cur = db.get_db().cursor()
+            cur.execute('''
+            SELECT user_id, username, password FROM Users WHERE username=?
+            ''', (username))
+
+            user_id = None
+            row = cur.fetchone()
+            while row is not None:
+                if row['password'] == pwd:
+                    user_id = row['user_id']
+                    break;
+                row = cur.fetchone()
+            cur.close()
+            if user_id is not None:
+                return redirect(url_for('chat.home_user', user_id))
+            error = 'Password incorrect'
+            return render_template('login.html', error=error)
         if error is not None:
             print(error)
             # store error to be shown
