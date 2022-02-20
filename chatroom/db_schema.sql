@@ -13,21 +13,21 @@ CREATE TABLE Users (
 );
 
 CREATE TABLE Sessions (
-    userref INTEGER REFERENCES Users.user_id,
-    login_tm INTEGER CHECK login_tm BETWEEN 1 AND CURRENT_TIMESTAMP
+    userref INTEGER REFERENCES Users(user_id),
+    login_tm INTEGER CHECK (login_tm BETWEEN 1 AND CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE Chats (
     chat_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    participant1 INTEGER REFERENCES Users.user_id,
-    participant2 INTEGER REFERENCES Users.user_id,
+    participant1 INTEGER REFERENCES Users(user_id),
+    participant2 INTEGER REFERENCES Users(user_id),
     creation_tm INTEGER,
     last_mod_tm INTEGER,
-    CHECK participant1 != participant2
+    CHECK (participant1 != participant2)
 );
 
 CREATE TABLE Messages (
     msg_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    chatref INTEGER REFERENCES Chats.chat_id,
+    chatref INTEGER REFERENCES Chats(chat_id),
     msg_data BLOB
 );

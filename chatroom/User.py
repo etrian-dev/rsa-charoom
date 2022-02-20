@@ -3,7 +3,6 @@ from chatroom.crypto import miller_rabin, genrandom, rsa
 
 from secrets import token_bytes
 from hashlib import sha3_256
-from random import getrandbits
 
 PRIME_LEN = 15
 ITERATIONS = 10
@@ -13,7 +12,7 @@ SALT_LEN = 16
 class User:
     def __init__(self, user: str, pwd: str):
         # User login info
-        self.user_id = getrandbits(64)
+        self.user_id = None
         self.username = user
         # TODO: hash + salt pwd
         #hash_obj = sha3_256()

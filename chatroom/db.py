@@ -24,9 +24,9 @@ def close_db(e=None):
         db.close()
 
 def init_db():
-    db = get_db()
+    gdb = get_db().cursor()
     with current_app.open_resource('db_schema.sql') as f:
-        db.executescript(f.read().decode('utf8'))
+        gdb.executescript(f.read().decode('utf8'))
 
 
 @click.command('init-db')

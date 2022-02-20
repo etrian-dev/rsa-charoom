@@ -8,8 +8,16 @@ from . import db
 
 def create_app(testing=None):
     app = Flask(__name__, instance_relative_config=True)
-    # app.config.from_mapping(
-    #        SECRET_KEY='dev')
+    app.config.from_mapping(
+        SECRET_KEY='dev',
+        DATABASE=os.path.join(app.instance_path, 'chatroom.sqlite'),
+    )
+    print(app.config['DATABASE'])
+     # ensure the instance folder exists
+    try:
+        os.makedirs(app.instance_path)
+    except OSError:
+        pass
     # if testing is None:
     #    app.config.from_pyfile('config.py', silent=True)
     # else:
@@ -19,7 +27,7 @@ def create_app(testing=None):
     app.register_blueprint(Msg.blueprint)
 
     print(app.url_map)
-    app.config['DATABASE'] = 'chatroom.sqlite'
+
     # init the db
     db.init_app(app)
 

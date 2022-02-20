@@ -1,6 +1,7 @@
-from time import time
-
 from . import db
+
+from time import time
+from sqlite3 import Connection, Cursor, DatabaseError
 
 class Chat:
     """Defines a chat between two users.
@@ -36,14 +37,14 @@ def home_user(user_id: int):
     user_data = dict()
     try:
         # Fetch the username
-        cur.execute('''SELECT username FROM Users WHERE user_id = ?''', (user_id))
+        cur.execute('''SELECT username FROM Users WHERE user_id = ?''', [user_id])
         user_data['username'] = cur.fetchone()
         # fetch this users's chats
         # FIXME: maybe use ? IN (participant1, participant2)
         cur.execute('''
         SELECT *
         FROM Chats
-        WHERE participant1 = ? or participant2 = ?''', (user_id, user_id))
+        WHERE participant1 = ? or participant2 = ?''', [user_id, user_id])
         for row in cur.fetchall():
             # create a chat object
             ch = Chat(row['participant1'], row['participant2'])

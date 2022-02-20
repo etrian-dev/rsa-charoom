@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="{{ url_for('static', filename='jquery-3.6.0.js') }}"></script>
+        <link rel="stylesheet" href="{{ url_for('static', filename='spectre.css') }}"></link>
+        <title>RSA chatroom - {{ user_data['username'] }}</title>
+    </head>
+    <body>
+        <ul class="menu">
+            {% for user in user_data['chats'] %}
+            <li class="menu-item">
+                <a href="/chats/{{ user.chat_id }}">
+                    Chat with:
+                    {% if user.participant1 is eq user_data['username'] %}
+                        {{ user.participant2 }}
+                    {% else %}
+                        {{ user.participant2 }}
+                    {% endif %}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    <body>
+</html>
