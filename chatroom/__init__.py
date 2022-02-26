@@ -26,8 +26,6 @@ def create_app(testing=None):
     app.register_blueprint(Chat.blueprint)
     app.register_blueprint(Msg.blueprint)
 
-    print(app.url_map)
-
     # init the db
     db.init_app(app)
 

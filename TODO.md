@@ -1,3 +1,6 @@
-+ GET/POST endpoint for registration
-+ Chat page design
-+ Left header for navigation
+- Chat page design (two-sided columns)
+- Left header for navigation
+- index page on route '/'
+- User detail page
+- Encryption/decryption of message data
+- logout function and proper authentication (maybe sessions)

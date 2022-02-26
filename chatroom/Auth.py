@@ -1,18 +1,6 @@
 from . import User
 from . import db
 
-# Create users
-#users = dict()
-#user_map = dict() # reverse lookup from username to user ID(s)
-#for u in ['mario', 'luigi', 'chiara' , 'jacopo', 'andrea', 'beatrice']:
-#    new_user = User.User(u, 'pwd')
-#    print('Created new user:', new_user, sep='\n')
-#    users[new_user] = False # not logged
-#    if u not in user_map.keys():
-#        user_map[u] = [new_user.user_id]
-#    else:
-#        user_map[u].append(new_user.user_id)
-
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for
 )
@@ -31,9 +19,12 @@ def register():
         # insert the newly created user into the db
         conn = db.get_db()
         try:
-            conn.execute('''
+            cur = conn.execute('''
             INSERT INTO Users(username, password, pk_n, pk_e, pk_d)
             VALUES (?,?,?,?,?)''', [new_user.username, new_user.password, new_user.pub_key[0], new_user.pub_key[1], new_user.priv_key])
+            # gets the rowid of the last row, which is the same as the new user_id
+            # iff user_id is an integer primary key with autoincrement
+            new_user.user_id = cur.lastrowid
         except DatabaseError:
             error = 'Insert failed'
             conn.rollback()
@@ -55,7 +46,8 @@ def login():
         if (not username) or (not pwd):
             error = 'Username or password unspecified'
         else:
-            cur = db.get_db().cursor()
+            conn = db.get_db()
+            cur = conn.cursor()
             cur.execute('SELECT user_id, username, password FROM Users WHERE username=?;', [username])
 
             user_id = None
@@ -63,7 +55,9 @@ def login():
             while row is not None:
                 if row['password'] == pwd:
                     user_id = row['user_id']
-                    print(user_id)
+                    # create a new session for this user
+                    cur.execute('INSERT INTO Sessions(userref,login_tm) VALUES (?, CURRENT_TIMESTAMP)', [user_id])
+                    conn.commit()
                     break;
                 row = cur.fetchone()
             cur.close()
@@ -76,4 +70,5 @@ def login():
             # store error to be shown
             flash(error)
     return render_template('login.html', error=error)
+
 

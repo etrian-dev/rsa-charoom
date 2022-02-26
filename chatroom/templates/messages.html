@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="{{ url_for('static', filename='jquery-3.6.0.js') }}"></script>
+        <script src="{{ url_for('static', filename='myrequests.js') }}"></script>
+        <link rel="stylesheet" href="{{ url_for('static', filename='spectre.css') }}"></link>
+        <title>RSA chatroom - {{ other_user|title }}</title>
+    </head>
+    <body>
+        {% for msg in messages %}
+            <div class="card columns">
+                <div class='card-header'>from:
+                    <span class='chip'>
+                    <a href='#' }}>{{ msg['sender'] }}</a>
+                    </span>
+                </div>
+                {% if msg['sender'] is eq this_user %}
+                    <div class='card-body bg-primary float-right col-2'>{{ msg['data'] }}</div>
+                {% else %}
+                    <div class='card-body bg-secondary float-left col-2'>{{ msg['data'] }}</div>
+                {% endif %}
+                <div class='card-footer'>
+                    <span class='chip'>
+                    <a href='#' }}>{{ msg['receiver'] }}</a>
+                    </span>
+                </div>
+            </div>
+        {% endfor %}
+        <form action="{{ url_for('msg.send_message', sender=this_user_id, recipient=other_user_id) }}"
+        id='msg-sending' method='POST'>
+            <input class='form-input' type='textarea' name='message' placeholder='Say something'>
+            <input class='btn btn-primary' type='submit' value='Send'>
+        </form>
+    <body>
+</html>

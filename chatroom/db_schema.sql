@@ -23,11 +23,15 @@ CREATE TABLE Chats (
     participant2 INTEGER REFERENCES Users(user_id),
     creation_tm INTEGER,
     last_mod_tm INTEGER,
-    CHECK (participant1 != participant2)
+    CHECK (participant1 != participant2),
+    UNIQUE(participant1, participant2)
 );
 
 CREATE TABLE Messages (
     msg_id INTEGER PRIMARY KEY AUTOINCREMENT,
     chatref INTEGER REFERENCES Chats(chat_id),
-    msg_data BLOB
+    sender INTEGER REFERENCES Users(user_id),
+    recipient INTEGER REFERENCES Users(user_id),
+    msg_data BLOB,
+    CHECK (sender != recipient)
 );
