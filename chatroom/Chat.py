@@ -134,7 +134,11 @@ def display_chat(user, other):
         else:
             sender = chat_info['other_user']
             receiver = chat_info['this_user']
-        messages.append({'sender': sender, 'receiver': receiver, 'data': msg['msg_data'].decode(encoding='utf-8')})
+        messages.append(
+            {'msg_id': msg['msg_id'],
+            'sender': sender,
+            'receiver': receiver,
+            'data': msg['msg_data'].decode(encoding='utf-8')})
     chat_info['messages'] = messages
 
     return render_template('messages.html', **chat_info)

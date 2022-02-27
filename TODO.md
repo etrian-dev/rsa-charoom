@@ -4,3 +4,4 @@
 - User detail page
 - Encryption/decryption of message data
 - logout function and proper authentication (maybe sessions)
+- Message modification trough PUT

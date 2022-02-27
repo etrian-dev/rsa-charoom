@@ -54,12 +54,32 @@ def send_message(sender, recipient):
         return f"Error"
 
 
-@blueprint.route('/<sender>/<receiver>/<int:msg_id>', methods=['GET'])
-def edit_message(sender, receiver, msg_id):
-    return f"PUTed msg from {sender} to {receiver}: {msg_id}"
+#TODO: PUT the message trough jQuery
+@blueprint.route('/<int:msg_id>', methods=['GET', 'POST'])
+def edit_message(msg_id):
+    msg_data = dict()
+    msg_data['msg_id'] = msg_id
+    db_conn = db.get_db()
+    cur = db_conn.execute('''
+    SELECT * FROM Messages WHERE msg_id = ?;''', [msg_id])
+    msg_row = cur.fetchone()
+
+    msg_data['old_msg'] = msg_row['msg_data'].decode(encoding='utf-8')
+    if request.method == 'POST':
+        new_msg = request.form['message']
+        cur.execute('''
+        UPDATE OR ROLLBACK Messages
+        SET msg_data = ?
+        WHERE msg_id = ?;
+        ''', [new_msg.encode(encoding='utf-8'), msg_id])
+        db_conn.commit()
+
+        return redirect(url_for('chat.display_chat', user=msg_row['sender'], other=msg_row['recipient']))
+    else:
+        return render_template('edit_message.html', **msg_data)
 
 
-@blueprint.route('/<sender>/<receiver>/<int:msg_id>', methods=['GET'])
+@blueprint.route('/<int:msg_id>', methods=['DELETE'])
 # TODO: delete
 def delete_message(sender, receiver, msg_id):
     return f"DELETEed msg from {sender} to {receiver}"

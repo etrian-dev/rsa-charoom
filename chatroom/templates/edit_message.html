@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="{{ url_for('static', filename='jquery-3.6.0.js') }}"></script>
+        <script src="{{ url_for('static', filename='myrequests.js') }}"></script>
+        <link rel="stylesheet" href="{{ url_for('static', filename='spectre.min.css') }}"></link>
+        <title>RSA chatroom - Edit message</title>
+    </head>
+    <body>
+        <div class="card">
+            <form action="{{ url_for('msg.edit_message', msg_id=msg_id) }}"
+        id='msg-edit' method='POST'>
+            <input class='form-input' type='textarea' name='message' value='{{ old_msg }}'>
+            <input class='btn btn-primary' type='submit' value='Edit'>
+        </form>
+        </div>
+    <body>
+</html>
