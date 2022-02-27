@@ -21,8 +21,8 @@ CREATE TABLE Chats (
     chat_id INTEGER PRIMARY KEY AUTOINCREMENT,
     participant1 INTEGER REFERENCES Users(user_id),
     participant2 INTEGER REFERENCES Users(user_id),
-    creation_tm INTEGER,
-    last_mod_tm INTEGER,
+    creation_tm TEXT,
+    last_mod_tm TEXT,
     CHECK (participant1 != participant2),
     UNIQUE(participant1, participant2)
 );

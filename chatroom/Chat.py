@@ -1,6 +1,7 @@
 from . import db
 
 from time import time
+from datetime import datetime
 from sqlite3 import Connection, Cursor, DatabaseError
 
 from flask import (
@@ -54,8 +55,8 @@ def home_user(user_id: int):
             # create a chat object
             ch = Chat(row['participant1'], row['participant2'])
             ch.chat_id = row['chat_id']
-            ch.creation_time = row['creation_tm']
-            ch.last_activity = row['last_mod_tm']
+            ch.creation_time = datetime.strptime(row['creation_tm'], "%Y-%m-%d %H:%M:%S").isoformat()
+            ch.last_activity = datetime.strptime(row['last_mod_tm'], "%Y-%m-%d %H:%M:%S").isoformat()
             # insert that into the user_data dict
             if 'chats' not in user_data:
                 user_data['chats'] = [ch]
@@ -87,7 +88,8 @@ def create_chat(creator):
             if match is not None:
                 cursor.execute('''
                 INSERT INTO Chats(participant1, participant2, creation_tm, last_mod_tm)
-                VALUES (?,?,?,?)''', [creator, match['user_id'], 'CURRENT_TIMESTAMP', 'CURRENT_TIMESTAMP'])
+                VALUES (?,?,datetime(),datetime());
+                ''', [creator, match['user_id']])
                 db_conn.commit()
                 cursor.close()
 
@@ -124,6 +126,11 @@ def display_chat(user, other):
     ''', [chat['chat_id']])
     msgs_encoded = cur.fetchall()
     messages = []
+    # build breadcrumb
+    breadcrumb = dict()
+    breadcrumb['home'] = url_for('chat.home_user', user_id=user)
+    breadcrumb[chat_info['other_user']] = url_for('chat.display_chat', user=user, other=other)
+    chat_info['breadcrumb'] = breadcrumb
     #decode messages
     for msg in msgs_encoded:
         sender = None

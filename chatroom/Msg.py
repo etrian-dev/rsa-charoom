@@ -5,6 +5,7 @@ class EncryptedMsg:
 
 from . import db
 from sqlite3 import Connection, Cursor, DatabaseError
+from json import loads
 
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for
@@ -24,7 +25,6 @@ def get_message(sender, receiver, msg_id):
 
 
 @blueprint.route('/<int:sender>/<int:recipient>/', methods=['POST'])
-# TODO: post
 def send_message(sender, recipient):
     db_conn = db.get_db()
     try:
@@ -55,8 +55,11 @@ def send_message(sender, recipient):
 
 
 #TODO: PUT the message trough jQuery
-@blueprint.route('/<int:msg_id>', methods=['GET', 'POST'])
+@blueprint.route('/<int:msg_id>', methods=['GET', 'PUT'])
 def edit_message(msg_id):
+    if request.method == 'PUT':
+        print(json.loads(request.get_json()))
+        return '',404
     msg_data = dict()
     msg_data['msg_id'] = msg_id
     db_conn = db.get_db()

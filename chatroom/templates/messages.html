@@ -7,6 +7,15 @@
         <title>RSA chatroom - {{ other_user|title }}</title>
     </head>
     <body>
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{{ breadcrumb['home'] }}"}>Home</a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{{ breadcrumb[other_user] }}"}>{{ other_user|title }}</a>
+            </li>
+        </ul>
+
         {% for msg in messages %}
             <div class="container columns">
             {% if msg['sender'] is eq this_user %}
