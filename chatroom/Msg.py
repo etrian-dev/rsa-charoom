@@ -8,7 +8,7 @@ from sqlite3 import Connection, Cursor, DatabaseError
 from json import loads
 
 from flask import (
-    Blueprint, flash, g, redirect, render_template, request, session, url_for
+    Blueprint, flash, g, redirect, render_template, request, session, url_for, make_response
 )
 
 blueprint = Blueprint('msg', __name__, url_prefix='/msg')
@@ -58,8 +58,19 @@ def send_message(sender, recipient):
 @blueprint.route('/<int:msg_id>', methods=['GET', 'PUT'])
 def edit_message(msg_id):
     if request.method == 'PUT':
-        print(json.loads(request.get_json()))
-        return '',404
+        cur = db.get_db().execute('''
+        SELECT sender,recipient FROM Messages WHERE msg_id = ?;
+        ''', [msg_id])
+        sender_recipient = cur.fetchone()
+        newmsg = request.get_json()['msg']
+        cur.execute('''
+        UPDATE Messages SET msg_data = ?;
+        ''', [newmsg.encode(encoding='utf-8')])
+        db.get_db().commit()
+        flash(f"Message {msg_id} updated successfully")
+        url = url_for('chat.display_chat', user=sender_recipient['sender'], other=sender_recipient['recipient'])
+        print(url)
+        return redirect(url)
     msg_data = dict()
     msg_data['msg_id'] = msg_id
     db_conn = db.get_db()

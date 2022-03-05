@@ -2,6 +2,6 @@
 - Left header for navigation
 - index page on route '/'
 - User detail page
-- Encryption/decryption of message data
+- Encryption/decryption of message data with RSA
 - logout function and proper authentication (maybe sessions)
-- Message modification trough PUT
+- Message editing redirect on success needs to return the display_chat page
