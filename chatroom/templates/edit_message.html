@@ -8,7 +8,7 @@
     </head>
     <body>
         <div class="card">
-            <form action="{{ url_for('msg.edit_message', msg_id=msg_id) }}">
+            <form action="{{ url_for('msg.edit_message', msg_id=msg_id) }}" id="msg-edit-form">
             <input class='form-input' type='textarea' id="message" name='message' value='{{ old_msg }}'>
             <button class='btn btn-primary' id="submit-btn" type='submit'>Ok</button>
         </form>

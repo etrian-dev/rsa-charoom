@@ -10,6 +10,7 @@ from json import loads
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for, make_response
 )
+from flask.json import jsonify
 
 blueprint = Blueprint('msg', __name__, url_prefix='/msg')
 
@@ -64,36 +65,35 @@ def edit_message(msg_id):
         sender_recipient = cur.fetchone()
         newmsg = request.get_json()['msg']
         cur.execute('''
-        UPDATE Messages SET msg_data = ?;
-        ''', [newmsg.encode(encoding='utf-8')])
+        UPDATE Messages SET msg_data = ? WHERE msg_id = ?;
+        ''', [newmsg.encode(encoding='utf-8'), msg_id])
         db.get_db().commit()
         flash(f"Message {msg_id} updated successfully")
         url = url_for('chat.display_chat', user=sender_recipient['sender'], other=sender_recipient['recipient'])
-        print(url)
-        return redirect(url)
+        return jsonify({"url": url})
+    # Otherwise render the webpage containing the message to be modified
     msg_data = dict()
     msg_data['msg_id'] = msg_id
     db_conn = db.get_db()
     cur = db_conn.execute('''
     SELECT * FROM Messages WHERE msg_id = ?;''', [msg_id])
     msg_row = cur.fetchone()
-
     msg_data['old_msg'] = msg_row['msg_data'].decode(encoding='utf-8')
-    if request.method == 'POST':
-        new_msg = request.form['message']
-        cur.execute('''
-        UPDATE OR ROLLBACK Messages
-        SET msg_data = ?
-        WHERE msg_id = ?;
-        ''', [new_msg.encode(encoding='utf-8'), msg_id])
-        db_conn.commit()
-
-        return redirect(url_for('chat.display_chat', user=msg_row['sender'], other=msg_row['recipient']))
-    else:
-        return render_template('edit_message.html', **msg_data)
+    return render_template('edit_message.html', **msg_data)
 
 
 @blueprint.route('/<int:msg_id>', methods=['DELETE'])
-# TODO: delete
-def delete_message(sender, receiver, msg_id):
-    return f"DELETEed msg from {sender} to {receiver}"
+def delete_message(msg_id):
+    if request.method == 'DELETE':
+        # Build the url of the chat where the user will be redirected after deletion
+        cur = db.get_db().execute('''
+        SELECT sender,recipient FROM Messages WHERE msg_id = ?;
+        ''', [msg_id])
+        sender_recipient = cur.fetchone()
+        url = url_for('chat.display_chat', user=sender_recipient['sender'], other=sender_recipient['recipient'])
+        # Delete the message
+        cur.execute('''
+        DELETE FROM Messages WHERE msg_id = ?;
+        ''', [msg_id])
+        db.get_db().commit()
+        return jsonify({"url": url})

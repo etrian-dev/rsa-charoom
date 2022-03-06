@@ -30,14 +30,16 @@
                     </span>
                 </div>
                 <div class='card-body'>{{ msg['data'] }}</div>
+                {% if msg['sender'] is eq this_user %}
                 <div class="card-footer">
                     <a href="{{ url_for('msg.edit_message', msg_id=msg['msg_id'])}}">
                         Edit
                     </a>
-                    <a href="{{ url_for('msg.delete_message', msg_id=msg['msg_id'])}}">
+                    <a id="msg-delete" href="{{ url_for('msg.delete_message', msg_id=msg['msg_id'])}}">
                         Delete
                     </a>
                 </div>
+                {% endif %}
             </div>
             </div>
         {% endfor %}
