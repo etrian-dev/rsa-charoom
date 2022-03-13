@@ -4,9 +4,9 @@ from chatroom.crypto import miller_rabin, genrandom, rsa
 from secrets import token_bytes
 from hashlib import sha3_256
 
-PRIME_LEN = 15
-ITERATIONS = 10
-SALT_LEN = 16
+PRIME_LEN = 512 
+ITERATIONS = 15
+SALT_LEN = 32
 
 
 class User:

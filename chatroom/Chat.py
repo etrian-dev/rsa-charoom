@@ -1,8 +1,10 @@
 from . import db
+from . import Msg
 
 from time import time
 from datetime import datetime
 from sqlite3 import Connection, Cursor, DatabaseError
+from json import load
 
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for
@@ -120,18 +122,18 @@ def display_chat(user, other):
     WHERE (participant1 = ? AND ? = participant2) OR (participant1 = ? AND participant2 = ?);
     ''', [user, other, other, user])
     chat = cur.fetchone()
-    # fetch all messages
+    # fetch all messages sent by the other user
     cur.execute('''
-    SELECT * FROM Messages WHERE chatref = ?;
-    ''', [chat['chat_id']])
+    SELECT * FROM Messages WHERE chatref = ? AND sender == ? ;
+    ''', [chat['chat_id'], other])
     msgs_encoded = cur.fetchall()
-    messages = []
     # build breadcrumb
     breadcrumb = dict()
     breadcrumb['home'] = url_for('chat.home_user', user_id=user)
     breadcrumb[chat_info['other_user']] = url_for('chat.display_chat', user=user, other=other)
     chat_info['breadcrumb'] = breadcrumb
     #decode messages
+    messages = []
     for msg in msgs_encoded:
         sender = None
         receiver = None
@@ -145,7 +147,20 @@ def display_chat(user, other):
             {'msg_id': msg['msg_id'],
             'sender': sender,
             'receiver': receiver,
-            'data': msg['msg_data'].decode(encoding='utf-8')})
+            'data': Msg.decrypt_message(user, msg['msg_data'])})
+    # fetch all messages sent by this user
+    try:
+        with open(Msg.get_msgstore(user, other), 'r') as msgstore:
+            sent_messages = load(msgstore)
+            for msg in sent_messages:
+                messages.append(
+                    {'msg_id': msg['msg_id'],
+                    'sender': chat_info['this_user'],
+                    'receiver': chat_info['other_user'],
+                    'data': msg['data']})
+            print(sent_messages)
+    except FileNotFoundError:
+        pass # no messages sent by this user yet
     chat_info['messages'] = messages
 
     return render_template('messages.html', **chat_info)

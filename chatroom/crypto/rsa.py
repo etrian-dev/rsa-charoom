@@ -33,9 +33,9 @@ def rsa_encrypt(message: int, exponent: int, mod: int) -> int:
     that a message greater than modulus is not allowed
     """
     if message > mod:
-        return -1
+        raise Exception(f"{message} > {mod}!") 
     else:
-        return fastext.fastexp(message, exponent, mod)
+        return fastexp.fastexp(message, exponent, mod)
 
 def rsa_decrypt(ciphertext: int, private_key: int, mod: int) -> int:
     """RSA decryption function.
@@ -45,7 +45,7 @@ def rsa_decrypt(ciphertext: int, private_key: int, mod: int) -> int:
     """
     if ciphertext > mod:
         # TODO: check this name
-        raise IllegalArgument
+        raise Exception(f"{msg} > {mod}!") 
     else:
         return fastexp.fastexp(ciphertext, private_key, mod)
 

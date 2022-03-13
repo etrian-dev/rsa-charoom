@@ -11,9 +11,9 @@ def create_app(testing=None):
     app.config.from_mapping(
         SECRET_KEY='dev',
         DATABASE=os.path.join(app.instance_path, 'chatroom.sqlite'),
+        #EXPLAIN_TEMPLATE_LOADING=True,
     )
-    print(app.config['DATABASE'])
-     # ensure the instance folder exists
+    # ensure the instance folder exists
     try:
         os.makedirs(app.instance_path)
     except OSError:

@@ -7,9 +7,9 @@ CREATE TABLE Users (
     user_id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL,
     password TEXT NOT NULL,
-    pk_n INTEGER NOT NULL,
-    pk_e INTEGER NOT NULL,
-    pk_d INTEGER NOT NULL
+    pk_n BLOB NOT NULL,
+    pk_e BLOB NOT NULL,
+    pk_d BLOB NOT NULL
 );
 
 CREATE TABLE Sessions (

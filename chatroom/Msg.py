@@ -7,20 +7,15 @@ from chatroom.crypto import rsa
 from . import db
 from sqlite3 import Connection, Cursor, DatabaseError
 from json import (load, loads, dump, dumps)
-from os import fspath, path
+from os import fspath, path, SEEK_END
 
 from flask import (
-    Blueprint, flash, g, redirect, render_template, request, session, url_for, make_response
+    Blueprint, flash, g, current_app, redirect, render_template, request, session, url_for, make_response
 )
+from flask import Flask
 from flask.json import jsonify
 
 blueprint = Blueprint('msg', __name__, url_prefix='/msg')
-
-def get_msgstore(sender: int, recipient: int):
-    with open(fspath(f'{sender}_{recipient}_sent.json'), 'r') as msgstore:
-        data = load(msgstore)
-    # Create the message file
-    open('sent.json', 'x')
 
 def get_all_messages(sender, receiver):
     return f"GET all msg from {sender} to {receiver}"
@@ -38,22 +33,44 @@ def msg_to_int(msg: str) -> int:
 def int_to_msg(num: int) -> str:
     """Simple bijective decoding function from integers to strings.
     """
-    return str(num.to_bytes(num.bit_length(), byteorder='big'), 'utf-8')
+    return str(num.to_bytes(num.bit_length() // 8 + 1, byteorder='big'), 'utf-8')
 
 def encrypt_msg(recipient: int, plaintext: str) -> int:
     '''Encrypt the plaintext message with recipient's public key.
     '''
     # get the public key of the recipient
     cur = db.get_db().execute('''
-    SELECT pk_e,pk_n FROM Users WHERE user_id = ? 
+    SELECT pk_e,pk_n,pk_d FROM Users WHERE user_id = ?
     ''', [recipient])
     res = cur.fetchone()
-    pubkey_n = res['pk_n']
-    pubkey_e = res['pk_e']
+    pubkey_n = int.from_bytes(res['pk_n'], byteorder='big')
+    pubkey_e = int.from_bytes(res['pk_e'], byteorder='big')
     # Encrypt this message with the recipient's public key
-    encrypted_msg = rsa_encrypt(msg_to_int(msg_data))
-    return enctypted_msg
+    orig_msg_int = msg_to_int(plaintext)
+    print('original:',orig_msg_int)
+    encrypted_msg = rsa.rsa_encrypt(orig_msg_int, pubkey_e, pubkey_n)
 
+    pubkey_d = int.from_bytes(res['pk_d'], byteorder='big')
+    decrypted_msg = rsa.rsa_decrypt(encrypted_msg, pubkey_d, pubkey_n)
+    assert orig_msg_int == decrypted_msg, "Messages differ"
+
+    return encrypted_msg
+
+def decrypt_message(recipient: int, data: bytes) -> str:
+    '''Decrypts a bytes object directed to this user into a message'''
+    cur = db.get_db().execute('''
+    SELECT pk_n,pk_d FROM Users WHERE user_id = ?
+    ''', [recipient])
+    res = cur.fetchone()
+    pubkey_n = int.from_bytes(res['pk_n'], byteorder='big')
+    priv_key = int.from_bytes(res['pk_d'], byteorder='big')
+    decrypted_msg = rsa.rsa_decrypt(int.from_bytes(data, byteorder='big'), priv_key, pubkey_n)
+    print('decrypted:', decrypted_msg)
+    return int_to_msg(decrypted_msg)
+
+def get_msgstore(sender, receiver) -> str:
+    # TODO: fix
+    return fspath(f'{current_app.instance_path}/{sender}_{receiver}_sent.json')
 
 @blueprint.route('/<int:sender>/<int:recipient>/', methods=['POST'])
 def send_message(sender, recipient):
@@ -69,15 +86,33 @@ def send_message(sender, recipient):
         chat_id = cur.fetchone()['chat_id']
         # retrieve the message data
         msg_data = request.form['message']
+
         # encrypt
         encrypted_msg = encrypt_msg(recipient, msg_data)
         # insert the message
         cur.execute('''
         INSERT INTO Messages(chatref,sender,recipient,msg_data)
         VALUES (?, ?, ?, ?);
-        ''', [chat_id, sender, recipient, enctypted_msg.to_bytes()])
+        ''', [chat_id, sender, recipient, encrypted_msg.to_bytes(length=encrypted_msg.bit_length() // 8 + 1, byteorder='big')])
+        # store the last row id == msg_id in this case
+        msg_id = cur.lastrowid
         db_conn.commit()
-        print(f"{sender} said: {msg_data} to {recipient}")
+        # fetch the message id
+        # Save the message to the msgstore
+        msg_obj = {"msg_id": msg_id, "sender": sender, "recipient": recipient, "data": msg_data}
+        file_exists = path.exists(fspath(f'{sender}_{recipient}_sent.json'))
+        if file_exists:
+            with open(get_msgstore(sender, recipient), 'r+b') as msgstore:
+                # cancel array end character
+                b = msgstore.seek(-1, SEEK_END)
+                print('seek = ', b)
+                msgstore.write((',\n' + dumps(msg_obj) + ' ]').encode(encoding='utf-8'))
+        else:
+            with open(get_msgstore(sender, recipient), 'a') as msgstore:
+                msgstore.write('[ ' + dumps(msg_obj) + ' ]')
+                print('last pos = ', msgstore.tell())
+
+        print(f"{sender} said to {recipient}: {msg_data}")
         # return an empty response, with a 201 Created code
         return redirect(url_for('chat.display_chat', user=sender, other=recipient))
     except DatabaseError:
@@ -86,31 +121,48 @@ def send_message(sender, recipient):
 
 @blueprint.route('/<int:msg_id>', methods=['GET', 'PUT'])
 def edit_message(msg_id):
+    # Get the message sender and receiver
+    cur = db.get_db().execute('''
+    SELECT sender,recipient FROM Messages WHERE msg_id = ?;
+    ''', [msg_id])
+    sender_recipient = cur.fetchone()
+    # Modify the message
     if request.method == 'PUT':
-        # Get the message sender and receiver
-        cur = db.get_db().execute('''
-        SELECT sender,recipient FROM Messages WHERE msg_id = ?;
-        ''', [msg_id])
-        sender_recipient = cur.fetchone()
         # get the new message (plaintext)
-        newmsg = request.get_json()['msg']
+        newmsg_data = request.get_json()['msg']
         # encrypt the new message and update the db
-        encrypted_msg = encrypt_msg(sender_recipient['recipient'], newmsg)
+        encrypted_msg = encrypt_msg(sender_recipient['recipient'], newmsg_data)
         cur.execute('''
         UPDATE Messages SET msg_data = ? WHERE msg_id = ?;
-        ''', [encrypted_msg.to_bytes(), msg_id])
+        ''', [encrypted_msg.to_bytes(encrypted_msg.bit_length() // 8 + 1, byteorder='big'), msg_id])
         db.get_db().commit()
+        # update the message stored in the msgstore as well
+        old = None
+        newmsg = None
+        with open(get_msgstore(sender_recipient['sender'], sender_recipient['recipient']), 'r') as msgstore:
+            messages = load(msgstore)
+            for msg in messages:
+                if msg['msg_id'] == msg_id:
+                    newmsg = msg
+                    newmsg['data'] = newmsg_data
+                    old = msg
+                    break
+        messages.remove(old)
+        messages.append(newmsg)
+        with open(get_msgstore(sender_recipient['sender'], sender_recipient['recipient']), 'w') as msgstore:
+            msgstore.write(dumps(messages))
         flash(f"Message {msg_id} updated successfully")
         url = url_for('chat.display_chat', user=sender_recipient['sender'], other=sender_recipient['recipient'])
         return jsonify({"url": url})
     # Otherwise render the webpage containing the message to be modified
     msg_data = dict()
     msg_data['msg_id'] = msg_id
-    db_conn = db.get_db()
-    cur = db_conn.execute('''
-    SELECT msg_data  FROM Messages WHERE msg_id = ?;''', [msg_id])
-    msg_row = cur.fetchone()
-    msg_data['old_msg'] = msg_row['msg_data'].decode(encoding='utf-8')
+    with open(get_msgstore(sender_recipient['sender'], sender_recipient['recipient']), 'r') as msgstore:
+        messages = load(msgstore)
+        for msg in messages:
+            if msg['msg_id'] == msg_id:
+                msg_data['old_msg'] = msg['data']
+                break
     return render_template('edit_message.html', **msg_data)
 
 
@@ -127,5 +179,16 @@ def delete_message(msg_id):
         cur.execute('''
         DELETE FROM Messages WHERE msg_id = ?;
         ''', [msg_id])
+        # Delete from the msgstore as well
+        to_delete = None
+        with open(get_msgstore(sender_recipient['sender'], sender_recipient['recipient']), 'r') as msgstore:
+            messages = load(msgstore)
+            for msg in messages:
+                if msg['msg_id'] == msg_id:
+                    to_delete = msg
+                    break
+        messages.remove(to_delete)
+        with open(get_msgstore(sender_recipient['sender'], sender_recipient['recipient']), 'w') as msgstore:
+            msgstore.write(dumps(messages))
         db.get_db().commit()
         return jsonify({"url": url})

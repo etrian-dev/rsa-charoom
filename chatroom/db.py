@@ -25,8 +25,9 @@ def close_db(e=None):
 
 def init_db():
     gdb = get_db().cursor()
-    with current_app.open_resource('db_schema.sql') as f:
-        gdb.executescript(f.read().decode('utf8'))
+    with current_app.open_resource('db_schema.sql', 'r') as f:
+        contents = f.read()
+        gdb.executescript(contents)
 # TODO: untested
 def querydb(query: str, args: list):
     '''Generator that queries the database and returns the resulting rows.
