@@ -4,7 +4,7 @@
         <script src="{{ url_for('static', filename='jquery-3.6.0.js') }}"></script>
         <script src="{{ url_for('static', filename='myrequests.js') }}"></script>
         <link rel="stylesheet" href="{{ url_for('static', filename='spectre.min.css') }}"></link>
-        <title>RSA chatroom - {{ other_user|title }}</title>
+        <title>RSA chatroom - {{ this_user|title }}</title>
     </head>
     <body>
         <ul class="breadcrumb">
@@ -35,7 +35,7 @@
                     <a href="{{ url_for('msg.edit_message', msg_id=msg['msg_id'])}}">
                         Edit
                     </a>
-                    <a id="msg-delete" href="{{ url_for('msg.delete_message', msg_id=msg['msg_id'])}}">
+                    <a id="msg-delete" name="msg-delete" href="{{ url_for('msg.delete_message', msg_id=msg['msg_id'])}}">
                         Delete
                     </a>
                 </div>

@@ -47,7 +47,6 @@ def encrypt_msg(recipient: int, plaintext: str) -> int:
     pubkey_e = int.from_bytes(res['pk_e'], byteorder='big')
     # Encrypt this message with the recipient's public key
     orig_msg_int = msg_to_int(plaintext)
-    print('original:',orig_msg_int)
     encrypted_msg = rsa.rsa_encrypt(orig_msg_int, pubkey_e, pubkey_n)
 
     pubkey_d = int.from_bytes(res['pk_d'], byteorder='big')
@@ -65,7 +64,6 @@ def decrypt_message(recipient: int, data: bytes) -> str:
     pubkey_n = int.from_bytes(res['pk_n'], byteorder='big')
     priv_key = int.from_bytes(res['pk_d'], byteorder='big')
     decrypted_msg = rsa.rsa_decrypt(int.from_bytes(data, byteorder='big'), priv_key, pubkey_n)
-    print('decrypted:', decrypted_msg)
     return int_to_msg(decrypted_msg)
 
 def get_msgstore(sender, receiver) -> str:
@@ -100,7 +98,7 @@ def send_message(sender, recipient):
         # fetch the message id
         # Save the message to the msgstore
         msg_obj = {"msg_id": msg_id, "sender": sender, "recipient": recipient, "data": msg_data}
-        file_exists = path.exists(fspath(f'{sender}_{recipient}_sent.json'))
+        file_exists = path.exists(get_msgstore(sender,recipient))
         if file_exists:
             with open(get_msgstore(sender, recipient), 'r+b') as msgstore:
                 # cancel array end character

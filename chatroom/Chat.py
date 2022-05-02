@@ -1,18 +1,20 @@
-from . import db
-from . import Msg
 
 from time import time
 from datetime import datetime
-from sqlite3 import Connection, Cursor, DatabaseError
+from sqlite3 import Connection, DatabaseError
 from json import load
-
+from flask import (Blueprint, request, render_template)
+from . import db
+from . import Msg
 from flask import (
-    Blueprint, flash, g, redirect, render_template, request, session, url_for
+    Blueprint, flash, g, redirect, render_template, request, url_for
 )
+
 
 class Chat:
     """Defines a chat between two users.
     """
+
     def __init__(self, user1: str, user2: str):
         self.chat_id = None
         self.participant1 = user1
@@ -25,6 +27,7 @@ class Chat:
         """Adds a new message to this chat.
         """
         self.messages.append(Msg.EncryptedMsg(data, timestamp))
+
     def delete_message(target):
         """Deletes a message from this chat.
         """
@@ -34,9 +37,9 @@ class Chat:
         except ValueError:
             print("Message", target, "not found")
 
-from flask import (Blueprint, request, render_template)
 
 blueprint = Blueprint('chat', __name__, url_prefix='/chats')
+
 
 @blueprint.route('/<int:user_id>', methods=['GET'])
 def home_user(user_id: int):
@@ -45,7 +48,9 @@ def home_user(user_id: int):
     user_data['user_id'] = user_id
     try:
         # Fetch the username
-        cur.execute('''SELECT username FROM Users WHERE user_id = ?''', [user_id])
+        cur.execute(
+            '''SELECT username FROM Users WHERE user_id = ?''',
+            [user_id])
         user_data['username'] = cur.fetchone()['username']
         # fetch this users's chats
         # FIXME: maybe use ? IN (participant1, participant2)
@@ -57,8 +62,10 @@ def home_user(user_id: int):
             # create a chat object
             ch = Chat(row['participant1'], row['participant2'])
             ch.chat_id = row['chat_id']
-            ch.creation_time = datetime.strptime(row['creation_tm'], "%Y-%m-%d %H:%M:%S").isoformat()
-            ch.last_activity = datetime.strptime(row['last_mod_tm'], "%Y-%m-%d %H:%M:%S").isoformat()
+            ch.creation_time = datetime.strptime(
+                row['creation_tm'], "%Y-%m-%d %H:%M:%S").isoformat()
+            ch.last_activity = datetime.strptime(
+                row['last_mod_tm'], "%Y-%m-%d %H:%M:%S").isoformat()
             # insert that into the user_data dict
             if 'chats' not in user_data:
                 user_data['chats'] = [ch]
@@ -69,21 +76,23 @@ def home_user(user_id: int):
         return render_template('chats.html')
     return render_template('chats.html', user_data=user_data)
 
+
 @blueprint.route('/<int:creator>/', methods=['POST'])
 def create_chat(creator):
-    # TODO: check that the current session for this client is logged as <creator>
+    # TODO: check that the current session for this client is logged as
+    # <creator>
     error = None
     matching_users = []
     if request.method == 'POST':
         # get the username of the user the creator wants to chat with
-        username = request.form['username']
+        username = request.form['matching-users']
         # get matching users
         db_conn = db.get_db()
         try:
             cursor = db_conn.execute('''
             SELECT user_id, username, password
             FROM Users
-            WHERE username=?;''', [username])
+            WHERE user_id=?;''', [username])
 
             # TODO: handle multiple users with the same username
             match = cursor.fetchone()
@@ -95,14 +104,16 @@ def create_chat(creator):
                 db_conn.commit()
                 cursor.close()
 
-                return redirect(url_for('chat.display_chat', user=creator, other=match['user_id']))
+                return redirect(url_for('chat.display_chat',
+                                user=creator, other=match['user_id']))
         except DatabaseError:
             error = 'DB lookup or insert failed'
-    return render_template('chat_choice.html', matching_users)
+    return "Unimplemented"
+
 
 @blueprint.route('/<int:user>/<int:other>', methods=['GET'])
 def display_chat(user, other):
-    chat_info = dict()
+    chat_info = {}
     chat_info['this_user_id'] = user
     chat_info['other_user_id'] = other
     db_conn = db.get_db()
@@ -128,11 +139,12 @@ def display_chat(user, other):
     ''', [chat['chat_id'], other])
     msgs_encoded = cur.fetchall()
     # build breadcrumb
-    breadcrumb = dict()
+    breadcrumb = {}
     breadcrumb['home'] = url_for('chat.home_user', user_id=user)
-    breadcrumb[chat_info['other_user']] = url_for('chat.display_chat', user=user, other=other)
+    breadcrumb[chat_info['other_user']] = url_for(
+        'chat.display_chat', user=user, other=other)
     chat_info['breadcrumb'] = breadcrumb
-    #decode messages
+    # decode messages
     messages = []
     for msg in msgs_encoded:
         sender = None
@@ -145,9 +157,9 @@ def display_chat(user, other):
             receiver = chat_info['this_user']
         messages.append(
             {'msg_id': msg['msg_id'],
-            'sender': sender,
-            'receiver': receiver,
-            'data': Msg.decrypt_message(user, msg['msg_data'])})
+             'sender': sender,
+             'receiver': receiver,
+             'data': Msg.decrypt_message(user, msg['msg_data'])})
     # fetch all messages sent by this user
     try:
         with open(Msg.get_msgstore(user, other), 'r') as msgstore:
@@ -155,15 +167,16 @@ def display_chat(user, other):
             for msg in sent_messages:
                 messages.append(
                     {'msg_id': msg['msg_id'],
-                    'sender': chat_info['this_user'],
-                    'receiver': chat_info['other_user'],
-                    'data': msg['data']})
+                     'sender': chat_info['this_user'],
+                     'receiver': chat_info['other_user'],
+                     'data': msg['data']})
             print(sent_messages)
     except FileNotFoundError:
-        pass # no messages sent by this user yet
+        pass  # no messages sent by this user yet
     chat_info['messages'] = messages
 
     return render_template('messages.html', **chat_info)
+
 
 @blueprint.route('/<creator>/<recipient>/', methods=['GET'])
 # TODO: delete

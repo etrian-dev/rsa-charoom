@@ -31,9 +31,14 @@
             {% endfor %}
         </ul>
         <div>
-            <form action="{{ url_for('chat.create_chat', creator=user_data['user_id']) }}" id='chat-creation' method='POST'>
+            <form action="{{ url_for('search.search_user') }}" id='user-search' name='user-search' method='GET'>
                 <span class='form-label'>Chat with: </span>
-                <input class='form-input' type='text' name='username' placeholder='username'>
+                <input class='form-input' type='text' id='query' name='query' placeholder='username'>
+                <input class='btn btn-primary' type='submit' value='Search'>
+            </form>
+            <form action="{{ url_for('chat.create_chat', creator=user_data['user_id']) }}" method='POST'>
+                <select id='matching-users' name='matching-users' class='form-select'>
+                </select>
                 <input class='btn btn-primary' type='submit' value='Create'>
             </form>
         </div>

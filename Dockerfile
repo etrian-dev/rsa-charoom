@@ -1,4 +1,4 @@
-FROM python:3.10.2-bullseye
+FROM python:3.9-alpine
 ARG FLASK_APP=chatroom
 ARG FLASK_ENV=development
 WORKDIR /usr/src/

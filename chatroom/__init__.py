@@ -2,7 +2,7 @@ import os
 
 from flask import Flask, render_template
 
-from . import (Auth, Chat, Msg)
+from . import (Admin, Auth, Chat, Msg, Search)
 from . import db
 
 
@@ -25,6 +25,9 @@ def create_app(testing=None):
     app.register_blueprint(Auth.blueprint)
     app.register_blueprint(Chat.blueprint)
     app.register_blueprint(Msg.blueprint)
+    app.register_blueprint(Search.blueprint)
+    # admin urls
+    app.register_blueprint(Admin.blueprint)
 
     # init the db
     db.init_app(app)
