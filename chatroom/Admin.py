@@ -19,7 +19,9 @@ def show_users():
         for user in cursor.fetchall():
             all_users[user['user_id']] = {
                 "username": user['username'],
-                "password": user['password']}
+                "password": user['password'],
+                "pub_key": [user['pk_e'].hex()[:20] + "...", user['pk_n'].hex()[:20] + "..."],
+                "priv_key": user['pk_d'].hex()[:20] + "..."}
         return render_template('admin_console.html', all_users=all_users)
     except DatabaseError:
         return "DB error"

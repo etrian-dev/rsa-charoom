@@ -33,5 +33,7 @@ CREATE TABLE Messages (
     sender INTEGER REFERENCES Users(user_id),
     recipient INTEGER REFERENCES Users(user_id),
     msg_data BLOB,
-    CHECK (sender != recipient)
+    tstamp INTEGER NOT NULL,
+    CHECK (sender != recipient),
+    CHECK (tstamp > 0)
 );

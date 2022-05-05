@@ -7,7 +7,9 @@ from chatroom.crypto import rsa
 from . import db
 from sqlite3 import Connection, Cursor, DatabaseError
 from json import (load, loads, dump, dumps)
-from os import fspath, path, SEEK_END
+from os import fspath, path, SEEK_END, SEEK_SET
+from time import time
+import logging
 
 from flask import (
     Blueprint, flash, g, current_app, redirect, render_template, request, session, url_for, make_response
@@ -87,34 +89,57 @@ def send_message(sender, recipient):
 
         # encrypt
         encrypted_msg = encrypt_msg(recipient, msg_data)
+
+        # get the timestamp
+        tstamp = int(time())
+
         # insert the message
         cur.execute('''
-        INSERT INTO Messages(chatref,sender,recipient,msg_data)
-        VALUES (?, ?, ?, ?);
-        ''', [chat_id, sender, recipient, encrypted_msg.to_bytes(length=encrypted_msg.bit_length() // 8 + 1, byteorder='big')])
+        INSERT INTO Messages(chatref,sender,recipient,msg_data,tstamp)
+        VALUES (?, ?, ?, ?, ?);
+        ''', 
+        [chat_id, 
+        sender, 
+        recipient, 
+        encrypted_msg.to_bytes(length=encrypted_msg.bit_length() // 8 + 1, byteorder='big'),
+        tstamp])
         # store the last row id == msg_id in this case
         msg_id = cur.lastrowid
         db_conn.commit()
-        # fetch the message id
+        logging.info(f"{sender} sent message {msg_id} to {recipient} at {tstamp}")
+
         # Save the message to the msgstore
-        msg_obj = {"msg_id": msg_id, "sender": sender, "recipient": recipient, "data": msg_data}
+        msg_obj = {
+            "msg_id": msg_id, 
+            "sender": sender, 
+            "recipient": recipient, 
+            "data": msg_data, 
+            "tstamp": tstamp}
         file_exists = path.exists(get_msgstore(sender,recipient))
         if file_exists:
             with open(get_msgstore(sender, recipient), 'r+b') as msgstore:
-                # cancel array end character
-                b = msgstore.seek(-1, SEEK_END)
-                print('seek = ', b)
-                msgstore.write((',\n' + dumps(msg_obj) + ' ]').encode(encoding='utf-8'))
+                # if there are no sent messages from sender to recipient, write a new array
+                # with one element
+                r = msgstore.read(2).decode(encoding='utf-8')
+                if r == '[]':
+                    msgstore.seek(0, SEEK_SET)
+                    msgstore.write(('[ ' + dumps(msg_obj) + ' ]').encode(encoding='utf-8'))
+                else:
+                    # otherwise a line is added, by extending the array with a comma and a newline
+                    # and then rewriting a ']' at the end
+                    b = msgstore.seek(-1, SEEK_END)
+                    msgstore.write((',\n' + dumps(msg_obj) + ' ]').encode(encoding='utf-8'))
         else:
+            # creates and writes the array containing this message
             with open(get_msgstore(sender, recipient), 'a') as msgstore:
                 msgstore.write('[ ' + dumps(msg_obj) + ' ]')
-                print('last pos = ', msgstore.tell())
-
-        print(f"{sender} said to {recipient}: {msg_data}")
-        # return an empty response, with a 201 Created code
-        return redirect(url_for('chat.display_chat', user=sender, other=recipient))
     except DatabaseError:
-        return f"Error"
+        flash(f"Failed to send the message")
+    except:
+        flash(f"Some error occurred")
+    # Redirects the user to the chat page after creating the resource
+    return redirect(url_for('chat.display_chat', user=sender, other=recipient))
+
 
 
 @blueprint.route('/<int:msg_id>', methods=['GET', 'PUT'])

@@ -2,6 +2,7 @@
 # https://flask.palletsprojects.com/en/2.0.x/tutorial/database/
 
 import sqlite3
+import logging
 
 import click
 from flask import current_app, g
@@ -28,6 +29,7 @@ def init_db():
     with current_app.open_resource('db_schema.sql', 'r') as f:
         contents = f.read()
         gdb.executescript(contents)
+    logging.info(f"Initialized database at {current_app.config['DATABASE']} from script {f.name}")
 # TODO: untested
 def querydb(query: str, args: list):
     '''Generator that queries the database and returns the resulting rows.

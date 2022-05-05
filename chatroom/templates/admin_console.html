@@ -8,8 +8,15 @@
     </head>
     <body>
         {% for usr in all_users.keys() %}
-        <div class='card-body'>
-            {{ all_users[usr]['username'] }} : {{ all_users[usr]['password'] }}
+        <div class='card'>
+            <div class='card-header'>{{ all_users[usr]['username'] }}</div>
+            <div class='card-body'>
+                <ul>
+                <li>password: {{ all_users[usr]['password']}}</li>
+                <li>public key: {{ all_users[usr]['pub_key']}}</li>
+                <li>private key: {{ all_users[usr]['priv_key']}}</li>
+                </ul>
+            </div>
         </div>
         {% endfor %}
     <body>

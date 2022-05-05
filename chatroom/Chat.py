@@ -3,6 +3,8 @@ from time import time
 from datetime import datetime
 from sqlite3 import Connection, DatabaseError
 from json import load
+import logging
+
 from flask import (Blueprint, request, render_template)
 from . import db
 from . import Msg
@@ -83,20 +85,21 @@ def create_chat(creator):
     # <creator>
     error = None
     matching_users = []
-    if request.method == 'POST':
+    if request.method == 'POST' and 'matching-users' in request.form:
         # get the username of the user the creator wants to chat with
-        username = request.form['matching-users']
-        # get matching users
+        # this value exists in the database because checks are made by the search service
+        # and it's unique because it's returned trough a form select
+        user_id = request.form['matching-users']
         db_conn = db.get_db()
         try:
             cursor = db_conn.execute('''
             SELECT user_id, username, password
             FROM Users
-            WHERE user_id=?;''', [username])
-
-            # TODO: handle multiple users with the same username
+            WHERE user_id=?;''', [user_id])
+            # user_id is primary key, so at most one tuple is fetched from the db
             match = cursor.fetchone()
             if match is not None:
+                # FIXME: probably should modify the db schema for the last two attributes -> timestamp
                 cursor.execute('''
                 INSERT INTO Chats(participant1, participant2, creation_tm, last_mod_tm)
                 VALUES (?,?,datetime(),datetime());
@@ -104,6 +107,7 @@ def create_chat(creator):
                 db_conn.commit()
                 cursor.close()
 
+                logging.info(f"Chat between {creator} and {match['user_id']} created at {datetime.now()}")
                 return redirect(url_for('chat.display_chat',
                                 user=creator, other=match['user_id']))
         except DatabaseError:
@@ -117,33 +121,46 @@ def display_chat(user, other):
     chat_info['this_user_id'] = user
     chat_info['other_user_id'] = other
     db_conn = db.get_db()
+    
     # fetch user IDs and usernames
     # of the current user and the other participant in the chat
-    cur = db_conn.execute('''
-    SELECT username FROM Users WHERE user_id = ?;
-    ''', [user])
-    chat_info['this_user'] = cur.fetchone()['username']
-    cur.execute('''
-    SELECT user_id,username FROM Users WHERE user_id = ?;
-    ''', [other])
-    chat_info['other_user'] = cur.fetchone()['username']
-    # fetch the chat
-    cur.execute('''
-    SELECT * FROM Chats
-    WHERE (participant1 = ? AND ? = participant2) OR (participant1 = ? AND participant2 = ?);
-    ''', [user, other, other, user])
-    chat = cur.fetchone()
-    # fetch all messages sent by the other user
-    cur.execute('''
-    SELECT * FROM Messages WHERE chatref = ? AND sender == ? ;
-    ''', [chat['chat_id'], other])
-    msgs_encoded = cur.fetchall()
+    try:
+        cur = db_conn.execute('''
+        SELECT username FROM Users WHERE user_id = ?;
+        ''', [user])
+        chat_info['this_user'] = cur.fetchone()['username']
+        cur.execute('''
+        SELECT user_id,username FROM Users WHERE user_id = ?;
+        ''', [other])
+        chat_info['other_user'] = cur.fetchone()['username']
+    except:
+        logging.error(f"Either user {user} or {other} not found in the database")
+        return render_template('404_not_found.html')
+    
     # build breadcrumb
     breadcrumb = {}
     breadcrumb['home'] = url_for('chat.home_user', user_id=user)
     breadcrumb[chat_info['other_user']] = url_for(
         'chat.display_chat', user=user, other=other)
     chat_info['breadcrumb'] = breadcrumb
+
+    # fetch the chat 
+    # (the or is needed because we don't know who created the chat)
+    cur.execute('''
+    SELECT * FROM Chats
+    WHERE (participant1 = ? AND ? = participant2) OR (participant1 = ? AND participant2 = ?);
+    ''', [user, other, other, user])
+    chat = cur.fetchone()
+    # check if the chat exists
+    if chat is None:
+        logging.error(f"Chat between {user} and {other} not found")
+        return render_template('404_not_found.html')
+    # fetch all messages sent by the other user
+    cur.execute('''
+    SELECT * FROM Messages WHERE chatref = ? AND sender == ? ;
+    ''', [chat['chat_id'], other])
+    msgs_encoded = cur.fetchall()
+    
     # decode messages
     messages = []
     for msg in msgs_encoded:
@@ -159,8 +176,9 @@ def display_chat(user, other):
             {'msg_id': msg['msg_id'],
              'sender': sender,
              'receiver': receiver,
-             'data': Msg.decrypt_message(user, msg['msg_data'])})
-    # fetch all messages sent by this user
+             'data': Msg.decrypt_message(user, msg['msg_data']),
+             'tstamp': msg['tstamp']})
+    # fetch all messages sent by this user from the msgstore
     try:
         with open(Msg.get_msgstore(user, other), 'r') as msgstore:
             sent_messages = load(msgstore)
@@ -169,12 +187,14 @@ def display_chat(user, other):
                     {'msg_id': msg['msg_id'],
                      'sender': chat_info['this_user'],
                      'receiver': chat_info['other_user'],
-                     'data': msg['data']})
-            print(sent_messages)
+                     'data': msg['data'],
+                     'tstamp': msg['tstamp']})
     except FileNotFoundError:
         pass  # no messages sent by this user yet
+    messages.sort(key=lambda x: x['tstamp'])
     chat_info['messages'] = messages
 
+    logging.info(f"User {user} requested the chat with {other}: {len(messages)} messages served")
     return render_template('messages.html', **chat_info)
 
 
