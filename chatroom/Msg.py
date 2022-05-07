@@ -3,6 +3,7 @@ class EncryptedMsg:
         self.message = data
         self.timestamp = stamp
 from chatroom.crypto import rsa
+from chatroom.decorators.auth import login_required
 
 from . import db
 from sqlite3 import Connection, Cursor, DatabaseError
@@ -73,6 +74,7 @@ def get_msgstore(sender, receiver) -> str:
     return fspath(f'{current_app.instance_path}/{sender}_{receiver}_sent.json')
 
 @blueprint.route('/<int:sender>/<int:recipient>/', methods=['POST'])
+@login_required
 def send_message(sender, recipient):
     db_conn = db.get_db()
     try:
@@ -143,6 +145,7 @@ def send_message(sender, recipient):
 
 
 @blueprint.route('/<int:msg_id>', methods=['GET', 'PUT'])
+@login_required
 def edit_message(msg_id):
     # Get the message sender and receiver
     cur = db.get_db().execute('''
@@ -190,6 +193,7 @@ def edit_message(msg_id):
 
 
 @blueprint.route('/<int:msg_id>', methods=['DELETE'])
+@login_required
 def delete_message(msg_id):
     if request.method == 'DELETE':
         # Build the url of the chat where the user will be redirected after deletion

@@ -8,6 +8,7 @@ import logging
 from flask import (Blueprint, request, render_template)
 from . import db
 from . import Msg
+from chatroom.decorators.auth import login_required
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, url_for
 )
@@ -42,8 +43,8 @@ class Chat:
 
 blueprint = Blueprint('chat', __name__, url_prefix='/chats')
 
-
 @blueprint.route('/<int:user_id>', methods=['GET'])
+@login_required
 def home_user(user_id: int):
     cur = db.get_db().cursor()
     user_data = dict()
@@ -80,6 +81,7 @@ def home_user(user_id: int):
 
 
 @blueprint.route('/<int:creator>/', methods=['POST'])
+@login_required
 def create_chat(creator):
     # TODO: check that the current session for this client is logged as
     # <creator>
@@ -116,6 +118,7 @@ def create_chat(creator):
 
 
 @blueprint.route('/<int:user>/<int:other>', methods=['GET'])
+@login_required
 def display_chat(user, other):
     chat_info = {}
     chat_info['this_user_id'] = user
@@ -199,6 +202,7 @@ def display_chat(user, other):
 
 
 @blueprint.route('/<creator>/<recipient>/', methods=['GET'])
+@login_required
 # TODO: delete
 def delete_chat(creator, recipient):
     return "DELETED chat between " + creator + " and " + recipient

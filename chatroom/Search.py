@@ -1,5 +1,6 @@
 from . import db
 from . import Msg
+from chatroom.decorators.auth import login_required
 
 from time import time
 from datetime import datetime
@@ -16,6 +17,7 @@ blueprint = Blueprint('search', __name__, url_prefix='/search')
 
 
 @blueprint.route('/', methods=['GET'])
+@login_required
 def search_user():
     '''This method allows searching for users in the database.
 

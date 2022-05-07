@@ -10,7 +10,7 @@
         <ul class="menu">
             <li class="divider" data-content="{{ user_data['username'] }}"></li>
             <li class="menu-item">
-                <a href="#">Log out</a>
+                <a href="{{ url_for('auth.logout', user_id=user_data['user_id']) }}">Log out</a>
             </li>
         </ul>
         <ul class="menu">

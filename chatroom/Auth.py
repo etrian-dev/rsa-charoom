@@ -1,10 +1,14 @@
 from . import User
 from . import db
 
+from chatroom.decorators.auth import login_required
+
+from sqlite3 import Connection, Cursor, DatabaseError
+from time import time_ns
+
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for
 )
-from sqlite3 import Connection, Cursor, DatabaseError
 
 blueprint = Blueprint('auth', __name__,url_prefix='/auth')
 
@@ -46,6 +50,7 @@ def login():
     '''Login into user profile.
     '''
     error = None
+    # get login data to authenticate user
     if request.method == 'POST':
         username = request.form['username']
         pwd = request.form['pwd']
@@ -54,14 +59,22 @@ def login():
             error = 'Username or password unspecified'
         else:
             conn = db.get_db()
-            cur = conn.execute('SELECT user_id, username, password FROM Users WHERE username=?;', [username])
+            cur = conn.execute('''
+                SELECT user_id, username, password 
+                FROM Users 
+                WHERE username=?;''', [username])
 
             user_id = None
             row = cur.fetchone()
             while row is not None:
                 if row['password'] == pwd:
                     user_id = row['user_id']
-                    # TODO: implement session creation here
+
+                    # create a session for this user
+                    cur.execute('''
+                        INSERT INTO Sessions(userref, login_tm)
+                        VALUES (?,?)''', [user_id, time_ns()])
+                    conn.commit()
                     break
                 row = cur.fetchone()
             cur.close()
@@ -74,4 +87,15 @@ def login():
             flash(error)
     return render_template('login.html', error=error)
 
-
+@blueprint.route('/logout/<int:user_id>', methods=['GET'])
+@login_required
+def logout(user_id: int):
+    conn = db.get_db()
+    cur = conn.execute('''
+        SELECT * FROM Sessions WHERE userref = ?;''', [user_id])
+    if cur.fetchone() is not None:
+        # delete the user session if present
+        cur.execute('''
+            DELETE FROM Sessions WHERE userref = ?;''', [user_id])
+        conn.commit()
+    return redirect(url_for('auth.login'))
