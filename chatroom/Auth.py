@@ -12,6 +12,11 @@ from flask import (
 
 blueprint = Blueprint('auth', __name__,url_prefix='/auth')
 
+@login_required
+def authorized(uid):
+    print(f"uid id {uid}, and logged user is {session['user_id']}")
+    return session['user_id'] == uid
+
 @blueprint.route('/register', methods=['GET', 'POST'])
 def register():
     '''Register a new user.
@@ -69,8 +74,11 @@ def login():
             while row is not None:
                 if row['password'] == pwd:
                     user_id = row['user_id']
-
-                    # create a session for this user
+                    # wipe any other session
+                    cur.execute('''
+                    DELETE FROM Sessions
+                    ''')
+                    # and create a session for this user
                     cur.execute('''
                         INSERT INTO Sessions(userref, login_tm)
                         VALUES (?,?)''', [user_id, time_ns()])
@@ -80,6 +88,7 @@ def login():
             cur.close()
             # User found: redirect to its own chats page
             if user_id is not None:
+                session['user_id'] = user_id
                 return redirect(url_for('chat.home_user', user_id=user_id))
             error = 'Password incorrect or user inexistent'
         if error is not None:
@@ -98,4 +107,5 @@ def logout(user_id: int):
         cur.execute('''
             DELETE FROM Sessions WHERE userref = ?;''', [user_id])
         conn.commit()
+        del session['user_id']
     return redirect(url_for('auth.login'))

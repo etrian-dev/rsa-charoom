@@ -6,6 +6,7 @@ from chatroom.crypto import rsa
 from chatroom.decorators.auth import login_required
 
 from . import db
+from . import Auth
 from sqlite3 import Connection, Cursor, DatabaseError
 from json import (load, loads, dump, dumps)
 from os import fspath, path, SEEK_END, SEEK_SET
@@ -76,6 +77,8 @@ def get_msgstore(sender, receiver) -> str:
 @blueprint.route('/<int:sender>/<int:recipient>/', methods=['POST'])
 @login_required
 def send_message(sender, recipient):
+    if not Auth.authorized(sender):
+        return redirect(url_for('auth.login'))
     db_conn = db.get_db()
     try:
         # get the chat id
@@ -147,6 +150,8 @@ def send_message(sender, recipient):
 @blueprint.route('/<int:msg_id>', methods=['GET', 'PUT'])
 @login_required
 def edit_message(msg_id):
+    if not Auth.authorized(sender):
+        return redirect(url_for('auth.login'))
     # Get the message sender and receiver
     cur = db.get_db().execute('''
     SELECT sender,recipient FROM Messages WHERE msg_id = ?;
@@ -195,6 +200,8 @@ def edit_message(msg_id):
 @blueprint.route('/<int:msg_id>', methods=['DELETE'])
 @login_required
 def delete_message(msg_id):
+    if not Auth.authorized(sender):
+        return redirect(url_for('auth.login'))
     if request.method == 'DELETE':
         # Build the url of the chat where the user will be redirected after deletion
         cur = db.get_db().execute('''

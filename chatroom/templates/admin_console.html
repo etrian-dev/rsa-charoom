@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <script src="{{ url_for('static', filename='jquery-3.6.0.js') }}"></script>
+        <script src="{{ url_for('static', filename='jquery-3.6.1.min.js') }}"></script>
         <script src="{{ url_for('static', filename='myrequests.js') }}"></script>
         <link rel="stylesheet" href="{{ url_for('static', filename='spectre.min.css') }}"></link>
         <title>RSA chatroom - admin</title>
@@ -12,6 +12,7 @@
             <div class='card-header'>{{ all_users[usr]['username'] }}</div>
             <div class='card-body'>
                 <ul>
+                <li>status: {{ all_users[usr]['status'] }}</li>
                 <li>password: {{ all_users[usr]['password']}}</li>
                 <li>public key: {{ all_users[usr]['pub_key']}}</li>
                 <li>private key: {{ all_users[usr]['priv_key']}}</li>

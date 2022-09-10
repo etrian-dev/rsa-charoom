@@ -33,7 +33,7 @@ def create_app(testing=None):
     logging.basicConfig(
         filename=os.path.join(app.instance_path, 'chatroom.log'),
         filemode='w',
-        level=logging.DEBUG,
+        level=logging.WARNING,
         encoding='utf-8')
     logging.info(f"Application launched at {datetime.now()}")
 

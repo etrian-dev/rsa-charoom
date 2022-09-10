@@ -7,17 +7,19 @@ from datetime import datetime
 from sqlite3 import Connection, Cursor, DatabaseError
 from json import dumps
 import logging
+import sys
 
 from flask import (
-    Blueprint, flash, g, redirect, render_template, request, session, url_for
-)
+        Blueprint, flash, g, redirect, render_template, request, session, url_for, Flask
+        )
 from flask.json import jsonify
 
 blueprint = Blueprint('search', __name__, url_prefix='/search')
 
-
+#NOTE: This route should not have a @login_required decorator fot the following reasons:
+# - Doesn't work
+# - No real reason to be authenticated to query for registered usernames
 @blueprint.route('/', methods=['GET'])
-@login_required
 def search_user():
     '''This method allows searching for users in the database.
 
@@ -28,21 +30,20 @@ def search_user():
     equal to the argument of the query. If the match is in the middle of the string
     that user is not added to the array.
     '''
-    logging.debug(f"search query: {request.args}")
+    logging.warning(f"search query: {request.args}")
+    print(f"search query: {request.args}", flush=True, file=sys.stderr)
     matching_users = []
     # Does not match any user if the search query is empty
     if request.method == 'GET' and 'user' in request.args and len(request.args['user']) > 0 :
         query = request.args['user']
-     
         db_conn = db.get_db()
-        
         try:
             cursor = db_conn.execute('''
-	    SELECT user_id, username
-	    FROM Users
-	    WHERE username LIKE ?
-	    ORDER BY username DESC;
-	    ''', [query + "%"])
+            SELECT user_id, username
+            FROM Users
+            WHERE username LIKE ?
+            ORDER BY username DESC;
+            ''', [query + "%"])
 
             for row in cursor.fetchall():
                 matching_users.append({
@@ -52,5 +53,7 @@ def search_user():
         except DatabaseError as err:
             print('SQLite error: %s' % (' '.join(err.args)))
             print("Exception class is: ", err.__class__)
-    logging.debug(f"{len(matching_users)} mathches found: {matching_users}")
+    logging.warning(f"{len(matching_users)} mathches found: {matching_users}")
+    print(f"{len(matching_users)} mathches found: {matching_users}", flush=True)
     return jsonify(matching_users)
+

@@ -17,9 +17,17 @@ def show_users():
         SELECT * FROM Users''')
         all_users = dict()
         for user in cursor.fetchall():
+            cur = conn.execute('''
+            SELECT * FROM Sessions WHERE userref=?''',
+            [user['user_id']])
+            user_session = cur.fetchone()
+            status = "Not logged"
+            if user_session is not None:
+                status = "Logged in"
             all_users[user['user_id']] = {
                 "username": user['username'],
                 "password": user['password'],
+                "status": status, 
                 "pub_key": [user['pk_e'].hex()[:20] + "...", user['pk_n'].hex()[:20] + "..."],
                 "priv_key": user['pk_d'].hex()[:20] + "..."}
         return render_template('admin_console.html', all_users=all_users)
